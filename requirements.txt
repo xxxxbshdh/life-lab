@@ -1,0 +1,6 @@
+# 运行依赖
+pygame>=2.0
+
+# 可选：LLM 客户端（仅用标准库 urllib，无需额外安装）
+# 若改用 requests，取消下一行注释
+# requests>=2.25

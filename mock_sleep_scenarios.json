@@ -1,0 +1,135 @@
+{
+  "_comment": "Pet/Manager 休眠与唤醒 mock 测试数据 (Windows/Python 本地可跑,不依赖 pygame GUI)\n场景事件类型:\n  - {\"type\":\"idle\", \"seconds\": N}              快进时间 N 秒\n  - {\"type\":\"tick\"}                              调用 Pet.tick() / Manager.tick() 一次\n  - {\"type\":\"chat\", \"text\": \"xxx\"}             模拟对话输入\n  - {\"type\":\"url_study\", \"url\": \"https://x\"}   (Manager 专属) 模拟 URL 学习\n  - {\"type\":\"assert\", \"check\": \"...\", \"expect\": val, \"label\": \"...\"}\n      check ∈ {sleeping, hunger_delta_le, reply_contains, reply_not_contains,\n                reply_len_lt, instant_tick_msg_contains, no_immediate_tick_msg,\n                manager_chat_inst_none}\nPet 场景 auto_sleep_after 统一 1s;Manager 统一 1s(方便测试)。",
+  "meta": {
+    "version": 1,
+    "pet_auto_sleep_s": 1,
+    "mgr_auto_sleep_s": 1,
+    "kb": {
+      "path": null
+    }
+  },
+  "scenarios": [
+    {
+      "id": "Pet-A-idle-sleep",
+      "title": "Pet-A 空闲 1.1s → 自动休眠",
+      "target": "pet",
+      "events": [
+        {"type": "idle", "seconds": 1.1},
+        {"type": "tick"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "空闲 1.1s 后 tick 进入休眠"}
+      ]
+    },
+    {
+      "id": "Pet-B-blocked-chat-when-sleeping",
+      "title": "Pet-B 休眠时输入非唤醒词 → zZz 且仍睡",
+      "target": "pet",
+      "setup_sleep": true,
+      "events": [
+        {"type": "chat", "text": "给我讲个笑话"},
+        {"type": "assert", "check": "reply_contains", "expect": ["zzZ", "睡觉"],
+         "label": "回复含 zZz/睡觉提示"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "仍然处于 sleeping"},
+        {"type": "assert", "check": "hunger_delta_le", "expect": 0.9,
+         "label": "再推进 100 tick 后饥饿增量 ≤ 0.9(休眠代谢减慢)",
+         "_then_tick": 100}
+      ]
+    },
+    {
+      "id": "Pet-C-wake-word-wake",
+      "title": "Pet-C 休眠时输入「醒醒 你好」→ 立即醒来,不再立刻睡",
+      "target": "pet",
+      "setup_sleep": true,
+      "events": [
+        {"type": "chat", "text": "醒醒 你好"},
+        {"type": "assert", "check": "sleeping", "expect": false,
+         "label": "唤醒词后 sleeping=False"},
+        {"type": "assert", "check": "reply_contains", "expect": ["叫醒", "清醒", "恢复"],
+         "label": "回复中含 叫醒/清醒/恢复 任一"},
+        {"type": "tick"},
+        {"type": "assert", "check": "sleeping", "expect": false,
+         "label": "唤醒后马上 tick 不会又睡(存活已 reset)"}
+      ]
+    },
+    {
+      "id": "Pet-D-continuous-chat-keeps-alive",
+      "title": "Pet-D 每 0.3s 说一句话(共 5 轮) → 全程不醒",
+      "target": "pet",
+      "events": [
+        {"type": "idle", "seconds": 0.3},
+        {"type": "chat", "text": "你好"},
+        {"type": "idle", "seconds": 0.3},
+        {"type": "chat", "text": "今天天气怎样"},
+        {"type": "idle", "seconds": 0.3},
+        {"type": "chat", "text": "你喜欢吃什么"},
+        {"type": "idle", "seconds": 0.3},
+        {"type": "chat", "text": "再聊聊"},
+        {"type": "idle", "seconds": 0.3},
+        {"type": "chat", "text": "晚安"},
+        {"type": "tick"},
+        {"type": "assert", "check": "sleeping", "expect": false,
+         "label": "持续输入续命 1.5s 后仍未休眠"}
+      ]
+    },
+    {
+      "id": "Mgr-A-idle-sleep",
+      "title": "Mgr-A 空闲 1.1s → 自动休眠",
+      "target": "manager",
+      "events": [
+        {"type": "idle", "seconds": 1.1},
+        {"type": "tick"},
+        {"type": "assert", "check": "instant_tick_msg_contains", "expect": "休眠",
+         "label": "tick() 返回的系统消息包含「休眠」"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "Manager.sleeping=True"}
+      ]
+    },
+    {
+      "id": "Mgr-B-sleep-no-instruction",
+      "title": "Mgr-B 休眠时「投放植物」指令 → inst=None 不执行",
+      "target": "manager",
+      "setup_sleep": true,
+      "events": [
+        {"type": "chat", "text": "在生态系统投放 12 株植物"},
+        {"type": "assert", "check": "manager_chat_inst_none", "expect": true,
+         "label": "manager_chat 返回 inst=None / rep=None 且不执行"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "Manager 仍在休眠(不因非唤醒词醒来)"}
+      ]
+    },
+    {
+      "id": "Mgr-C-wake-re-sleep",
+      "title": "Mgr-C 休眠→唤醒→再 1.1s 空闲→再次休眠",
+      "target": "manager",
+      "setup_sleep": true,
+      "events": [
+        {"type": "chat", "text": "管家小爱马 醒醒"},
+        {"type": "assert", "check": "sleeping", "expect": false,
+         "label": "唤醒后 sleeping=False"},
+        {"type": "idle", "seconds": 1.1},
+        {"type": "tick"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "再次空闲 1.1s 后 tick 重新进入休眠"}
+      ]
+    },
+    {
+      "id": "Mgr-D-url-keep-alive-then-skip-when-sleep",
+      "title": "Mgr-D 正常态 URL 学习续命 / 休眠态 URL 学习跳过",
+      "target": "manager",
+      "events": [
+        {"type": "idle", "seconds": 0.95},
+        {"type": "url_study", "url": "https://example.invalid/pet-fake-page"},
+        {"type": "assert", "check": "sleeping", "expect": false,
+         "label": "成功学习URL后 reset activity,不会立刻睡"},
+        {"type": "idle", "seconds": 1.1},
+        {"type": "tick"},
+        {"type": "assert", "check": "sleeping", "expect": true,
+         "label": "学习 URL 后再 1.1s 无动作 → 进入休眠"},
+        {"type": "url_study", "url": "https://another.invalid/page"},
+        {"type": "assert", "check": "reply_contains", "expect": ["休眠", "唤醒"],
+         "label": "休眠态 URL 学习跳过,提示休眠/唤醒"}
+      ]
+    }
+  ]
+}

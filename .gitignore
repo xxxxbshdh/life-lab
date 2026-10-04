@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.venv/
+venv/
+
+# 本地配置（含密钥，绝不提交）
+llm_config.json
+*_config.json
+!llm_config.example.json
+
+# 运行时状态文件（自动生成）
+pet_state.json
+manager_state.json
+*_state.json
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log

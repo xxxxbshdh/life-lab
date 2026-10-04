@@ -1,0 +1,6 @@
+{
+  "_comment": "复制本文件为 llm_config.json 并填入实际值。base_url 需以 /v1 结尾或类似格式;本地 Ollama 示例:http://localhost:11434/v1, api_key 留空即可。",
+  "base_url": "https://api.openai.com/v1",
+  "api_key": "sk-替换为你的APIKEY",
+  "model": "gpt-4o-mini"
+}
